@@ -1,0 +1,197 @@
+package org.teiacoltec.poo.tp4.ui;
+
+import java.awt.*;
+import javax.swing.*;
+
+import org.teiacoltec.poo.tp4.recursohumano.Pessoa;
+import org.teiacoltec.poo.tp4.auth.Hash;
+import org.teiacoltec.poo.tp4.auth.Autenticacao;
+import org.teiacoltec.poo.tp4.excecoes.CredenciaisInvalidasException;
+import org.teiacoltec.poo.tp4.recursohumano.GerenciadorPessoas;
+import java.util.Date;
+import java.text.SimpleDateFormat;
+
+import org.teiacoltec.poo.tp4.main.Main;
+import org.teiacoltec.poo.tp4.turma.Turma;
+
+public class UI extends JFrame {
+    private GridBagConstraints gbc = new GridBagConstraints();
+
+    private Date data = new Date();
+    private final static SimpleDateFormat formato = new SimpleDateFormat("dd/MM/yyyy - HH:mm:ss");
+
+    private JPanel topo = new JPanel();
+    private JPanel base = new JPanel();
+    private JPanel meio = new JPanel();
+
+    private JButton btnLogout = new JButton("Logout");
+    private JButton btnSair = new JButton("Encerrar");
+    private JTextArea horario = new JTextArea();
+    private JTextArea dadosLogado = new JTextArea();
+    private String email;
+    private String senha;
+    private Pessoa usuarioLogado = null;
+
+    private JTabbedPane abas = new JTabbedPane();
+    private JPanel abaEditar = new JPanel();
+    private JPanel abaVisualizar = new JPanel();
+    private JPanel abaPostar = new JPanel();
+
+
+
+    private void sair() {
+        System.exit(0);
+    }
+
+    private void sairOuCancelar() {
+        int op = JOptionPane.showConfirmDialog(
+                this,
+                "Deseja realmente sair?",
+                "Sair do Sistema",
+                JOptionPane.YES_NO_OPTION
+        );
+
+        if (op == JOptionPane.YES_OPTION) {
+            sair();
+        }
+    }
+
+    private void autenticar() {
+
+        while (true) {
+            String email = JOptionPane.showInputDialog("Digite o seu email:");
+            if (email == null) { 
+                sairOuCancelar();
+                return;
+            }
+
+            String senhaDigitada = JOptionPane.showInputDialog("Digite a sua senha:");
+            if (senhaDigitada == null) {
+                sairOuCancelar();
+                return;
+            }
+
+            String senhaHash = Hash.GeraSenhaSHA_256(senhaDigitada);
+
+            try {
+                usuarioLogado = Autenticacao.autenticar(
+                        email.trim(),
+                        senhaHash,
+                        GerenciadorPessoas.obterListaPessoas()
+                );
+
+                dadosLogado.setText("Seja bem vindo(a), " + usuarioLogado.getNome() + "\nSeu CPF: " + usuarioLogado.getCPF() + "\nSua Matricula: " + usuarioLogado.getMatricula());
+
+                return;
+
+            } catch (CredenciaisInvalidasException e) {
+
+                int opcao = JOptionPane.showConfirmDialog(
+                        this,
+                        "Email ou senha incorretos.\nDeseja tentar novamente?",
+                        "Falha na Autenticação",
+                        JOptionPane.YES_NO_OPTION
+                );
+
+                if (opcao == JOptionPane.NO_OPTION) {
+                    sairOuCancelar();
+                    return;
+                }
+            }
+        }
+    }
+
+    private void fazerLogout() {
+        usuarioLogado = Autenticacao.logout();
+        this.dispose(); 
+        new UI().setVisible(true); 
+    }
+
+    public UI() {
+        this.setSize(700, 600);
+        setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+        this.setLayout(new GridBagLayout());
+
+        base.setLayout(new GridBagLayout());
+        meio.setLayout(new GridBagLayout());
+        topo.setLayout(new GridBagLayout());
+
+
+        dadosLogado.setEditable(false);
+
+        autenticar();
+
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        gbc.weightx = 1;
+        gbc.weighty = 1;
+        gbc.fill = GridBagConstraints.BOTH;
+
+        if (usuarioLogado.podeVisualizar()) {
+            abas.addTab("Visualizar", abaVisualizar);
+        }
+        
+        if (usuarioLogado.podePostar()) {
+            abas.addTab("Postar", abaPostar);
+        }
+
+        if (usuarioLogado.podeEditar()) {
+            abas.addTab("Editar", abaEditar);
+        }
+
+        this.add(abas, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        gbc.gridwidth = 2;
+        gbc.gridheight = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        gbc.weighty = 0.0;
+        gbc.insets = new Insets(4, 4, 4, 4);
+
+        //Area para adicionar aos paineis
+        this.add(base, gbc);
+
+        gbc.gridy = 1;
+        base.add(btnLogout, gbc);
+        gbc.gridy = 2;
+        base.add(btnSair, gbc);
+        gbc.gridx = 1;
+        gbc.gridy = 3;
+        //gbc.weightx = 0.2;
+        
+       Timer timer = new Timer(1000, e -> {
+            data = new Date();
+            horario.setText(formato.format(data));
+        });
+
+        timer.start();
+
+        gbc.fill = GridBagConstraints.VERTICAL;
+        base.add(horario, gbc);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        gbc.gridx = 0;
+
+        gbc.gridy = 1;
+
+        this.add(meio, gbc);
+
+        gbc.gridy = 0;
+        gbc.gridx = 0;
+
+        topo.setLayout(new GridBagLayout());
+        
+        gbc.anchor = GridBagConstraints.CENTER;
+        
+        topo.add(dadosLogado, gbc);
+        this.add(topo, gbc);
+
+        // Area para Listeners
+        btnLogout.addActionListener(e -> fazerLogout());
+        btnSair.addActionListener(e -> sair());
+
+    }
+
+}
